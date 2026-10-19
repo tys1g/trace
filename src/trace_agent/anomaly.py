@@ -1,7 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
+from trace_agent.timeseries import Observation
 
 
 @dataclass(frozen=True)
@@ -11,6 +14,8 @@ class Anomaly:
     expected_value: float
     deviation_percent: float
     severity: str
+    timestamp: datetime | None = None
+    metric: str | None = None
 
 
 def detect_anomalies(
@@ -75,3 +80,26 @@ def detect_anomalies(
         )
 
     return anomalies
+
+
+def detect_observation_anomalies(
+    observations: list[Observation],
+    threshold: float = 3.0,
+) -> list[Anomaly]:
+    """Detect anomalies and attach each result's timestamp and metric."""
+    if not all(isinstance(item, Observation) for item in observations):
+        raise TypeError("observations must contain Observation objects")
+
+    anomalies = detect_anomalies(
+        [observation.value for observation in observations],
+        threshold=threshold,
+    )
+
+    return [
+        replace(
+            anomaly,
+            timestamp=observations[anomaly.index].timestamp,
+            metric=observations[anomaly.index].metric,
+        )
+        for anomaly in anomalies
+    ]
